@@ -1,5 +1,5 @@
 // src/CastleGame.js
-import React, from 'react';
+import React from 'react';
 
 const CastleGame = () => {
   const tools = [
