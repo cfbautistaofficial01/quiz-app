@@ -1,92 +1,100 @@
 // src/CastleGame.js
-import React from 'react';
+import React, { useState, useRef } from 'react';
+// No longer need to import the image here
 
 const CastleGame = () => {
-  const tools = [
-    { id: 'firewall', name: 'Firewall', description: 'Controls incoming and outgoing network traffic at the main gate.' },
-    { id: 'ids', name: 'IDS / IPS', description: 'Monitors network traffic for suspicious activity along the walls.' },
-    { id: 'edr', name: 'EDR', description: 'Protects individual devices (endpoints) inside the towers.' },
-  ];
+  // State to hold the list of notes
+  const [notes, setNotes] = useState([]);
+  // State for the text of a new note
+  const [newNoteText, setNewNoteText] = useState('');
+  // Ref to the main game area to calculate positions
+  const gameAreaRef = useRef(null);
 
-  const dropZones = [
-    { id: 'gate', name: 'Main Gate', accepts: 'firewall', top: '70%', left: '42%' },
-    { id: 'walls', name: 'Castle Walls', accepts: 'ids', top: '50%', left: '15%' },
-    { id: 'towers', name: 'Towers', accepts: 'edr', top: '25%', left: '70%' },
-  ];
+  // Function to add a new note
+  const handleAddNote = () => {
+    if (newNoteText.trim() === '') return; // Don't add empty notes
+    const newNote = {
+      id: Date.now(), // Simple unique ID
+      text: newNoteText,
+      x: 50, // Initial X position
+      y: 50, // Initial Y position
+    };
+    setNotes([...notes, newNote]);
+    setNewNoteText(''); // Clear the input field
+  };
 
-  const [droppedTools, setDroppedTools] = React.useState({});
-
-  const handleDragStart = (e, toolId) => {
-    e.dataTransfer.setData("toolId", toolId);
+  // When you start dragging a note, store its ID
+  const handleDragStart = (e, noteId) => {
+    e.dataTransfer.setData("noteId", noteId);
   };
 
   const handleDragOver = (e) => {
-    e.preventDefault();
+    e.preventDefault(); // This is necessary to allow dropping
   };
 
-  const handleDrop = (e, zone) => {
+  // When you drop a note, update its position
+  const handleDrop = (e) => {
     e.preventDefault();
-    const toolId = e.dataTransfer.getData("toolId");
-    if (zone.accepts === toolId) {
-      setDroppedTools(prev => ({ ...prev, [toolId]: zone.id }));
-    }
-  };
+    const noteId = e.dataTransfer.getData("noteId");
+    const gameAreaBounds = gameAreaRef.current.getBoundingClientRect();
 
-  const isToolPlaced = (toolId) => !!droppedTools[toolId];
+    // Calculate the new X and Y based on drop position relative to the game area
+    const newX = e.clientX - gameAreaBounds.left;
+    const newY = e.clientY - gameAreaBounds.top;
+
+    // Update the state for the specific note that was moved
+    setNotes(notes.map(note => 
+      note.id === parseInt(noteId) ? { ...note, x: newX, y: newY } : note
+    ));
+  };
 
   return (
     <div className="w-full max-w-4xl mx-auto p-4 bg-white rounded-xl shadow-lg">
-      <h1 className="text-3xl font-bold text-center mb-2">Activity: Secure the Castle</h1>
-      <p className="text-center text-gray-600 mb-6">Drag each security tool to its correct location on the castle diagram.</p>
+      <h1 className="text-3xl font-bold text-center mb-2">Activity: Alarm the Castle!</h1>
+      <p className="text-center text-gray-600 mb-4">Add notes to represent digital alarm systems. Drag them to where you think they belong on the castle diagram.</p>
+
+      {/* Input Controls */}
+      <div className="flex gap-2 mb-4">
+        <input
+          type="text"
+          value={newNoteText}
+          onChange={(e) => setNewNoteText(e.target.value)}
+          placeholder="Type your alarm idea here..."
+          className="flex-grow p-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-teal-500"
+        />
+        <button
+          onClick={handleAddNote}
+          className="bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 px-4 rounded-lg transition-colors"
+        >
+          Add Note
+        </button>
+      </div>
 
       {/* Game Area */}
-      <div className="relative w-full aspect-video bg-cover bg-center rounded-lg border-2" style={{ backgroundImage: `url('/images/castle.png')` }}>
-        {dropZones.map(zone => (
+      <div
+        ref={gameAreaRef}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
+        className="relative w-full aspect-video bg-cover bg-center rounded-lg border-2"
+        style={{ backgroundImage: `url('${process.env.PUBLIC_URL}/images/castle.png')` }}
+      >
+        {/* Render all the notes */}
+        {notes.map(note => (
           <div
-            key={zone.id}
-            onDragOver={handleDragOver}
-            onDrop={(e) => handleDrop(e, zone)}
-            className="absolute w-24 h-24 border-2 border-dashed border-yellow-400 rounded-full flex items-center justify-center text-center text-white bg-black bg-opacity-50"
-            style={{ top: zone.top, left: zone.left, transform: 'translate(-50%, -50%)' }}
+            key={note.id}
+            draggable
+            onDragStart={(e) => handleDragStart(e, note.id)}
+            className="absolute p-3 bg-yellow-200 border border-yellow-400 rounded-md shadow-lg cursor-grab"
+            style={{ 
+              left: `${note.x}px`, 
+              top: `${note.y}px`,
+              transform: 'translate(-50%, -50%)' // Center the note on the cursor
+            }}
           >
-            {zone.name}
+            {note.text}
           </div>
         ))}
-        {Object.entries(droppedTools).map(([toolId, zoneId]) => {
-            const tool = tools.find(t => t.id === toolId);
-            const zone = dropZones.find(z => z.id === zoneId);
-            return (
-                 <div key={toolId} className="absolute p-2 bg-green-500 text-white rounded-lg shadow-xl" style={{ top: zone.top, left: zone.left, transform: 'translate(-50%, -50%)' }}>
-                    <p className="font-bold text-sm">{tool.name}</p>
-                </div>
-            )
-        })}
       </div>
-
-      {/* Draggable Tools Area */}
-      <div className="mt-6 flex justify-around p-4 bg-gray-100 rounded-lg">
-        {tools.map(tool => (
-          !isToolPlaced(tool.id) && (
-            <div
-              key={tool.id}
-              id={tool.id}
-              draggable
-              onDragStart={(e) => handleDragStart(e, tool.id)}
-              className="p-4 bg-teal-500 text-white rounded-lg shadow-md cursor-grab w-1/4 text-center mx-2"
-            >
-              <p className="font-bold">{tool.name}</p>
-              <p className="text-xs mt-1">{tool.description}</p>
-            </div>
-          )
-        ))}
-      </div>
-      
-      {Object.keys(droppedTools).length === tools.length && (
-        <div className="mt-6 p-4 bg-green-100 text-green-800 rounded-lg text-center">
-            <h2 className="text-2xl font-bold">Castle Secured!</h2>
-            <p>Great job! You've correctly placed all the security tools.</p>
-        </div>
-      )}
     </div>
   );
 };

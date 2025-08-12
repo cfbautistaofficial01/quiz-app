@@ -1,6 +1,10 @@
 // src/App.js
 import React, { useState, useEffect } from 'react';
-import CastleGame from './CastleGame'; // Make sure CastleGame.js is in the same src folder
+import CastleGame from './CastleGame';
+import { db, auth } from './firebaseConfig'; // Assuming you have firebaseConfig.js
+import { collection, getDocs, addDoc } from 'firebase/firestore';
+import { signInAnonymously, onAuthStateChanged } from 'firebase/auth';
+import { seedDatabase } from './seed'; // We will use your seed.js file
 
 // This is the component for the Quiz activity
 const QuizActivity = () => {
@@ -13,18 +17,30 @@ const QuizActivity = () => {
   const [feedback, setFeedback] = useState('');
   const [showResults, setShowResults] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(null);
 
   useEffect(() => {
-    fetch('./scenarios.json')
-      .then(response => response.json())
-      .then(data => {
-        setScenarios(data);
-        setLoading(false);
-      })
-      .catch(error => {
-        console.error("Error fetching scenarios:", error);
-        setLoading(false);
+    const initializeQuiz = async () => {
+      // Ensure user is signed in
+      await signInAnonymously(auth);
+      onAuthStateChanged(auth, (currentUser) => {
+        setUser(currentUser);
       });
+
+      // Seed the database if needed, then fetch the data
+      await seedDatabase(db);
+      const scenariosCollection = collection(db, 'scenarios');
+      const scenarioSnapshot = await getDocs(scenariosCollection);
+      const scenarioList = scenarioSnapshot.docs.map(doc => doc.data());
+      
+      setScenarios(scenarioList);
+      setLoading(false);
+    };
+
+    initializeQuiz().catch(error => {
+        console.error("Initialization failed:", error);
+        setLoading(false);
+    });
   }, []);
 
   const handleNameSubmit = (e) => {
@@ -45,16 +61,27 @@ const QuizActivity = () => {
     }
   };
 
-  const handleNext = () => {
-    if (currentQuestion + 1 < scenarios.length) {
-      setCurrentQuestion(currentQuestion + 1);
+  const handleNext = async () => {
+    const nextQuestion = currentQuestion + 1;
+    if (nextQuestion < scenarios.length) {
+      setCurrentQuestion(nextQuestion);
       setSelectedOption(null);
       setFeedback('');
     } else {
+      // Save score to Firestore
+      if (user) {
+        await addDoc(collection(db, "scores"), {
+          uid: user.uid,
+          name: userName,
+          score: score,
+          total: scenarios.length,
+          timestamp: new Date()
+        });
+      }
       setShowResults(true);
     }
   };
-
+  
   const restartQuiz = () => {
     setCurrentQuestion(0);
     setScore(0);
@@ -67,6 +94,11 @@ const QuizActivity = () => {
     return <div className="flex items-center justify-center min-h-screen"><p className="text-lg">Loading Quiz...</p></div>;
   }
 
+  // This check prevents the crash if the fetch fails
+  if (!loading && scenarios.length === 0) {
+    return <div className="flex items-center justify-center min-h-screen"><p className="text-lg text-red-500">Error: Could not load quiz scenarios from the database.</p></div>;
+  }
+  
   if (!isNameSet) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-800 p-4">
@@ -89,7 +121,7 @@ const QuizActivity = () => {
       </div>
     );
   }
-
+  
   if (showResults) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-gray-800 text-white p-4 text-center">
@@ -109,7 +141,7 @@ const QuizActivity = () => {
       <div className="w-full max-w-2xl bg-white rounded-xl shadow-2xl p-8">
         <h2 className="text-xl font-semibold text-gray-500 mb-2">Scenario {currentQuestion + 1} of {scenarios.length}</h2>
         <p className="text-2xl text-gray-800 mb-6 min-h-[100px]">{currentScenario.scenario}</p>
-
+        
         <div className="space-y-4 mb-6">
           {currentScenario.options.map((option, index) => (
             <button
