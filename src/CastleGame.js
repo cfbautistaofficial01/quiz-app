@@ -40,7 +40,7 @@ const CastleGame = () => {
       <p className="text-center text-gray-600 mb-6">Drag each security tool to its correct location on the castle diagram.</p>
 
       {/* Game Area */}
-      <div className="relative w-full aspect-video bg-cover bg-center rounded-lg border-2" style={{ backgroundImage: `url('/castle.png')` }}>
+      <div className="relative w-full aspect-video bg-cover bg-center rounded-lg border-2" style={{ backgroundImage: `url('/images/castle.png')` }}>
         {dropZones.map(zone => (
           <div
             key={zone.id}
