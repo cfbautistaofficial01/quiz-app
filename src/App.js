@@ -2,7 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import CastleGame from './CastleGame';
 import QuizDay2 from './QuizDay2';
-import ResultsViewer from './ResultsViewer'; // Import the new results component
+import ResultsViewer from './ResultsViewer';
+import ConnectTheDots from './ConnectTheDots'; // Import the new activity
 import { db, auth } from './firebaseConfig';
 import { collection, getDocs, addDoc } from 'firebase/firestore';
 import { signInAnonymously, onAuthStateChanged } from 'firebase/auth';
@@ -10,6 +11,7 @@ import { seedDatabase } from './seed';
 
 // This is the component for the Day 1 Quiz activity
 const QuizDay1 = () => {
+  // ... code for QuizDay1 remains exactly the same
   const [userName, setUserName] = useState('');
   const [isNameSet, setIsNameSet] = useState(false);
   const [scenarios, setScenarios] = useState([]);
@@ -23,13 +25,13 @@ const QuizDay1 = () => {
   const [step, setStep] = useState('identify');
   const [selectedThreat, setSelectedThreat] = useState(null);
   const [justification, setJustification] = useState('');
-  const [submissions, setSubmissions] = useState([]); // New state to track all answers
+  const [submissions, setSubmissions] = useState([]);
 
   useEffect(() => {
     const initializeQuiz = async () => {
       await signInAnonymously(auth);
       onAuthStateChanged(auth, (currentUser) => setUser(currentUser));
-      await seedDatabase(db); // Uses the Day 1 seed file
+      await seedDatabase(db);
       const scenariosCollection = collection(db, 'scenarios');
       const scenarioSnapshot = await getDocs(scenariosCollection);
       const scenarioList = scenarioSnapshot.docs.map(doc => doc.data());
@@ -76,15 +78,13 @@ const QuizDay1 = () => {
       resetStep();
     } else {
       if (user) {
-        // ** THE FIX IS HERE **
-        // We now save the entire submissions array along with the score.
         await addDoc(collection(db, "scores_day1"), {
           uid: user.uid,
           name: userName,
           score: score,
           total: scenarios.length,
           timestamp: new Date(),
-          submissions: submissions 
+          submissions: submissions
         });
       }
       setShowResults(true);
@@ -103,7 +103,7 @@ const QuizDay1 = () => {
     setScore(0);
     resetStep();
     setShowResults(false);
-    setSubmissions([]); // Reset submissions on restart
+    setSubmissions([]);
   };
 
   if (loading) return <div className="flex items-center justify-center min-h-screen"><p className="text-lg">Loading Quiz...</p></div>;
@@ -193,7 +193,8 @@ function App() {
             case 'quiz_day1': return <QuizDay1 />;
             case 'quiz_day2': return <QuizDay2 />;
             case 'game': return <CastleGame />;
-            case 'results': return <ResultsViewer />; // New case for the results viewer
+            case 'connect_dots': return <ConnectTheDots />; // New case for the new activity
+            case 'results': return <ResultsViewer />;
             default:
                 return (
                     <div className="text-center">
@@ -201,8 +202,9 @@ function App() {
                         <p className="text-gray-600 mb-8">Please choose an activity to begin.</p>
                         <div className="space-y-4">
                             <button onClick={() => setCurrentView('quiz_day1')} className="w-full max-w-xs bg-teal-500 hover:bg-teal-600 text-white font-bold py-3 px-4 rounded-lg text-lg transition-colors">Day 1: Threat or Not? Quiz</button>
-                            <button onClick={() => setCurrentView('quiz_day2')} className="w-full max-w-xs bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-lg text-lg transition-colors">Day 2: Triage & Assess Quiz</button>
                             <button onClick={() => setCurrentView('game')} className="w-full max-w-xs bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-4 rounded-lg text-lg transition-colors">Day 2: Secure the Castle</button>
+                            <button onClick={() => setCurrentView('connect_dots')} className="w-full max-w-xs bg-purple-500 hover:bg-purple-600 text-white font-bold py-3 px-4 rounded-lg text-lg transition-colors">Day 2: Connect the Dots</button>
+                            <button onClick={() => setCurrentView('quiz_day2')} className="w-full max-w-xs bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-lg text-lg transition-colors">Day 2: Triage & Assess Quiz</button>
                         </div>
                         <div className="mt-8 border-t pt-6">
                              <button onClick={() => setCurrentView('results')} className="w-full max-w-xs bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-4 rounded-lg text-lg transition-colors">
